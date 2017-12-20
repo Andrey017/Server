@@ -31,9 +31,9 @@ int main(int argc, char* argv[])
 
     int slot=0;
 
+    /*Find out what arguments were passed*/
     while ((c = getopt (argc, argv, "p:r:")) != -1)
-        switch (c)
-        {
+        switch (c){
             case 'r':
                 ROOT = malloc(strlen(optarg));
                 strcpy(ROOT,optarg);
@@ -54,17 +54,14 @@ int main(int argc, char* argv[])
         clients[i]=-1;
     startServer(PORT);
 
-    while (1)
-    {
+    while (1){
         addrlen = sizeof(clientaddr);
         clients[slot] = accept (listenfd, (struct sockaddr *) &clientaddr, &addrlen);
 
         if (clients[slot]<0)
             error ("accept() error");
-        else
-        {
-            if ( fork()==0 )
-            {
+        else {
+            if ( fork()==0 ) {
                 respond(slot);
                 exit(0);
             }
@@ -76,42 +73,38 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-void startServer(char *port)
-{
+/* Start server*/
+void startServer(char *port) {
     struct addrinfo hints, *res, *p;
 
     memset (&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    if (getaddrinfo( NULL, port, &hints, &res) != 0)
-    {
+    if (getaddrinfo( NULL, port, &hints, &res) != 0) {
         perror ("getaddrinfo() error");
         exit(1);
     }
-    for (p = res; p!=NULL; p=p->ai_next)
-    {
+    for (p = res; p!=NULL; p=p->ai_next) {
         listenfd = socket (p->ai_family, p->ai_socktype, 0);
         if (listenfd == -1) continue;
         if (bind(listenfd, p->ai_addr, p->ai_addrlen) == 0) break;
     }
-    if (p==NULL)
-    {
+    if (p==NULL) {
         perror ("socket() or bind()");
         exit(1);
     }
 
     freeaddrinfo(res);
 
-    if ( listen (listenfd, 1000000) != 0 )
-    {
+    if ( listen (listenfd, 1000000) != 0 ) {
         perror("listen() error");
         exit(1);
     }
 }
 
-void respond(int n)
-{
+/*Generation and display server response*/
+void respond(int n) {
     char mesg[99999], *reqline[3], data_to_send[BYTES], path[99999];
     int rcvd, fd, bytes_read;
 
@@ -123,20 +116,16 @@ void respond(int n)
         fprintf(stderr,("recv() error\n"));
     else if (rcvd==0)
         fprintf(stderr,"Client disconnected upexpectedly.\n");
-    else
-    {
+    else {
         printf("%s", mesg);
         reqline[0] = strtok (mesg, " \t\n");
-        if ( strncmp(reqline[0], "GET\0", 4)==0 )
-        {
+        if ( strncmp(reqline[0], "GET\0", 4)==0 ) {
             reqline[1] = strtok (NULL, " \t");
             reqline[2] = strtok (NULL, " \t\n");
-            if ( strncmp( reqline[2], "HTTP/1.0", 8)!=0 && strncmp( reqline[2], "HTTP/1.1", 8)!=0 )
-            {
+            if ( strncmp( reqline[2], "HTTP/1.0", 8)!=0 && strncmp( reqline[2], "HTTP/1.1", 8)!=0 ) {
                 write(clients[n], "HTTP/1.0 400 Bad Request\n", 25);
             }
-            else
-            {
+            else {
                 if ( strncmp(reqline[1], "/\0", 2)==0 )
                     reqline[1] = "/index.html";
 
@@ -144,8 +133,7 @@ void respond(int n)
                 strcpy(&path[strlen(ROOT)], reqline[1]);
                 printf("file: %s\n", path);
 
-                if ( (fd=open(path, O_RDONLY))!=-1 )
-                {
+                if ( (fd=open(path, O_RDONLY))!=-1 ) {
                     send(clients[n], "HTTP/1.0 200 OK\n\n", 17, 0);
                     while ( (bytes_read=read(fd, data_to_send, BYTES))>0 )
                         write (clients[n], data_to_send, bytes_read);
